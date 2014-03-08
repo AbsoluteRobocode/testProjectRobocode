@@ -31,11 +31,11 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 	//L'identité du leader
 	private static String leadersIdentity;
 	//Le nombre de tireurs ayant pris plus de dégâts que prévu durant ce tour
-	private static damagedShooter = 0;
+	private static int damagedShooter = 0;
 	//Indique si la stratégie a fonctionné durant ce tour
 	private static boolean stratWorked = true;
 	//Nombre d'alliés encore en vie
-	private static teammatesAlive = 5;
+	private static int teammatesAlive = 5;
 	
 	
 	/**
@@ -109,12 +109,12 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 	public void onHitByBullet(HitByBulletEvent e) 
 	{
 		//Si ce n'est pas un tir allié qui nous a touché
-		if(stratWorked && ! isTeamate(e.getName()) && myMovementBehavior == movementBehavior.tireur)
+		if(stratWorked && ! isTeammate(e.getName()) && myMovementBehavior == movementBehavior.shooter )
 		{
-			double damageTaken = 4 * e.getPuissance() + 2 * Math.max(getPower()-1, 0);
+			double damageTaken = 4 * e.getPower() + 2 * Math.max( e.getPower()-1, 0);
 			totalDamageTakenByBullet += damageTaken;
 			
-			if(totalDamageTaken > 30 && totalDamageTaken - damageTaken < 30)
+			if(totalDamageTakenByBullet > 30 && totalDamageTakenByBullet - damageTaken < 30)
 			{
 				damagedShooter ++;
 				if(damagedShooter > 3)
@@ -124,7 +124,7 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 				}
 			}
 			
-			if(totalDamageTaken > 50 && totalDamageTaken - damageTaken < 50)
+			if(totalDamageTakenByBullet > 50 && totalDamageTakenByBullet - damageTaken < 50)
 			{
 				stratWorked = false;
 				nbWrongBaiter ++;
