@@ -79,19 +79,15 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 		{
 			if(myMovementBehavior == movementBehavior.shooter)
 			{
-				ahead(100);
-				back(100);
+				shooter_routine();
 			}
 			else if (myMovementBehavior == movementBehavior.bait)
 			{
-				setTurnRight(10000);
-				setMaxVelocity(5);
-				ahead(10000);
+				bait_routine();
 			}
 			else
 			{
-				ahead(100);
-				back(100);
+				runaway_routine();
 			}
 		}
 	}
@@ -152,5 +148,39 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 	 */
 	public void onHitWall(HitWallEvent e) 
 	{
-	}	
+	}
+	
+	/*
+	 * fonction qui contiendra la routine d'un tank shooter afin de rendre plus propre
+	 * le code et plus facil à maintenir par les responsables de cette partie
+	 * cette routine sera appelée dans la boucle de la fonction run
+	 */
+	public void shooter_routine() {
+		//code à remplacer par le vrai
+		ahead(100);
+		back(100);
+	}
+	
+	/*
+	 * fonction qui contiendra la routine d'un tank bait afin de rendre plus propre
+	 * le code et plus facil à maintenir par les responsables de cette partie
+	 * cette routine sera appelée dans la boucle de la fonction run
+	 */
+	public void bait_routine() {
+		//code à remplacer par le vrai
+		setTurnRight(10000);
+		setMaxVelocity(5);
+		ahead(10000);
+	}
+	
+	/*
+	 * fonction qui contiendra la routine d'un tank runaway afin de rendre plus propre
+	 * le code et plus facil à maintenir par les responsables de cette partie
+	 * cette routine sera appelée dans la boucle de la fonction run
+	 */
+	public void runaway_routine() {
+		//code à remplacer par le vrai
+		ahead(100);
+		back(100);
+	}
 }
