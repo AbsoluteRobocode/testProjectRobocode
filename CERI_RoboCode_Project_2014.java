@@ -1,7 +1,10 @@
 package CERI;
 import robocode.*;
 import java.awt.Color;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 
 
@@ -12,6 +15,7 @@ import java.util.ArrayList;
  */
 public class CERI_RoboCode_Project_2014 extends TeamRobot
 {
+	private static String NEUROPH_FILE_URL = "neuroph.dat";
 	//Les points de vie perdus sous les coups adverses
 	private double totalDamageTakenByBullet = 0;
 	//Le comportement qu'adoptera le robot au niveau de ses déplacements
@@ -24,6 +28,8 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 	private String tracked = null;
 	//Identité du deuxieme bot que nous traquons si on est en mode "outnumbered" sur le radar
 	private String tracked2 = null;
+	//Traque les bullets pour savoir si elles atteignent leurs cibles
+	private ArrayList<BulletData> bulletList = new ArrayList<BulletData>();
 	
 	//Les variables static sont conservées d'un round sur l'autre
 	// Indique si le robot est leader
@@ -60,6 +66,7 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 			//Nous sommes donc dans une partie du code où seul le leader (initial) va
 			leader = true;
 			myLeaderData = new LeaderData();
+			readFrom(NEUROPH_FILE_URL);
 		}
 		
 		if(leader == true)
@@ -74,7 +81,6 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 			
 			//On initialise le field monitor
 			myLeaderData.newRound();
-			
 			
 			//On va renseigner à tout nos alliés ce qu'on attend d'eux au niveau des mouvements
 			try 
@@ -162,7 +168,14 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 			{
 				int index = myLeaderData.acquireTarget();
 				RobotData enemy = myLeaderData.getFm().getRobots().get(index);
-				ShootInstruction instruction = myLeaderData.useNeuroph(this.getName(), enemy, this.getTime());
+				Point myPosition = new Point(this.getX(), this.getY());
+				Point positionEnemy = enemy.getPosition();
+				double headingEnemy = enemy.getDirection();
+				double enemyVelocity = enemy.getVitesse();
+				double distance = Point.getDistance(myPosition, positionEnemy);
+				double angle = Point.getAngle(myPosition, positionEnemy);
+				long turnWithoutInfo = this.getTime() - enemy.getLastScan();
+				ShootInstruction instruction = myLeaderData.neuroph(distance, angle, headingEnemy, enemyVelocity, turnWithoutInfo);
 				double CANON_MAX_ANGLE = 20;
 				
 				double tailleAngle = Math.abs(instruction.getGunDirection()-this.getGunHeading());
@@ -183,6 +196,8 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 					}
 					double puissanceTir = instruction.getPuissance();
 					Bullet myBullet = this.fireBullet(puissanceTir);
+					//On enregistre la bullet dans notre liste de bullet tirées, avec également d'autres informations que neuroph souhaite récupérer
+					bulletList.add(new BulletData(myBullet, enemy, angle, distance, turnWithoutInfo));
 				}
 				//Si on ne peut pas atteindre l'angle demandé, on essaye de s'en rapprocher un maximum
 				else
@@ -205,21 +220,6 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 	 */
 	public void onScannedRobot(ScannedRobotEvent e) 
 	{
-		if(tracked != null)
-		{
-			if(e.getName().equals(tracked))
-				System.out.println("Trouve1 : "+tracked);
-			else
-				System.out.println("Cherche1 : "+tracked);
-		}
-		if(tracked2 != null)
-		{
-			if(e.getName().equals(tracked2))
-				System.out.println("Trouve2 : "+tracked2);
-			else
-				System.out.println("Cherche2 : "+tracked2);
-		}
-		
 		boolean isFoe = true;
 		//Vérifier si le robot scanné est un ennemi
 		for (int i=0; i<getTeammates().length; i++)
@@ -518,6 +518,78 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 		}
 	}
 	
+	//Si on touche un robot avec notre bullet
+	public void onBulletHit(BulletHitEvent e)
+	{
+		//On libere la mémoire allouée à cette bullet.
+		//On vérifie également si on a touché la cible qu'on voulait atteindre
+		//Si on ne a atteint une autre cible, on n'enregistre rien, les données sont inutilisable (un ennemi a pu s'interposer)
+		for(int i=0; i<this.bulletList.size(); i++)
+		{
+			if(e.getBullet().equals(bulletList.get(i).getMyBullet()))
+			{
+				if(e.getName().equals(bulletList.get(i).getCible().getName()))
+				{
+					BulletData copy = bulletList.get(i);
+					NeurophData data = new NeurophData(copy.getDistanceInitiale(), copy.getAngleInitial(), copy.getCible().getDirection(), copy.getCible().getVitesse(), copy.getTurnWithoutInfo(), copy.getMyBullet().getHeading(), copy.getMyBullet().getPower(), true);
+					if(leader)
+						sauvegarder(NEUROPH_FILE_URL, data);
+					else
+					{
+						try 
+						{
+							sendMessage(leadersIdentity, data);
+						} 
+						catch (IOException e1) 
+						{
+							e1.printStackTrace();
+						}
+					}
+				}
+				bulletList.remove(i);
+			}
+		}
+	}
+	
+	//Si on touche un mur avec notre bullet
+	public void onBulletMissed(BulletMissedEvent e)
+	{
+		//On libere la mémoire allouée à cette bullet.
+		//On sauvegarde également le fait qu'on ai raté notre cible
+		for(int i=0; i<this.bulletList.size(); i++)
+		{
+			if(e.getBullet().equals(bulletList.get(i).getMyBullet()))
+			{
+				BulletData copy = bulletList.get(i);
+				NeurophData data = new NeurophData(copy.getDistanceInitiale(), copy.getAngleInitial(), copy.getCible().getDirection(), copy.getCible().getVitesse(), copy.getTurnWithoutInfo(), copy.getMyBullet().getHeading(), copy.getMyBullet().getPower(), false);
+				if(leader)
+					sauvegarder(NEUROPH_FILE_URL, data);
+				else
+				{
+					try 
+					{
+						sendMessage(leadersIdentity, data);
+					} 
+					catch (IOException e1) 
+					{
+						e1.printStackTrace();
+					}
+				}
+				bulletList.remove(i);
+			}
+		}
+	}
+	
+	//Si notre bullet s'entre détruit avec une autre
+	public void onBulletHitBullet(BulletHitBulletEvent e)
+	{
+		//On libere la mémoire allouée à cette bullet.
+		//on ne sauvegarde pas les données pour neuroph : ces données sont inutilisables
+		for(int i=0; i<this.bulletList.size(); i++)
+			if(e.getBullet().equals(bulletList.get(i).getMyBullet()))
+				bulletList.remove(i);
+	}
+	
 	/**
 	 * onScannedRobot: What to do when you receive a message
 	 */
@@ -559,6 +631,12 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 				assignNewBaiter();
 				System.out.println("Le baiter a pris sa retraite");
 			}
+		}
+		//Si on reçoit les données pour neuroph d'un autre robot, c'est qu'il faut les sauvgarder
+		if(e.getMessage() instanceof NeurophData)
+		{
+			NeurophData data = (NeurophData) e.getMessage();
+			sauvegarder(NEUROPH_FILE_URL, data);
 		}
 	}
 	
@@ -672,32 +750,105 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 			myMovementBehavior = movementBehavior.bait;
 	}
 	
-	//Normalement, ce code n'est plus utile depuis que les données alliées et ennemis sont dans le field monitor
-	/*//Sert à connaître son numéro de bot. Ce code fonctionne uniquement parce que tout les robots sont une instance de la même classe(code fournit par RoboCode)
-	public int getBotNumber(String name) 
+	public void readFrom(String url)
 	{
-		String n = "0";
-		int low = name.indexOf("(")+1; 
-		int hi = name.lastIndexOf(")");
-		if (low >= 0 && hi >=0) 
-		{ 
-			n = name.substring(low, hi); 
+		try 
+		{
+			BufferedReader reader = null;
+			reader = new BufferedReader(new FileReader(getDataFile(NEUROPH_FILE_URL)));
+			if(!reader.markSupported())
+				System.out.println("LA MARQUE N'EST PAS SUPPORTEE");
+			int cpt = 0;
+			double distance=0, angle=0, heading=0, velocity=0, bulletHeading=0, bulletPower=0;
+			long infoAccuracy=0;
+			int touche=0;
+			StringBuilder strBuild = new StringBuilder("");
+			String value;
+			char c;
+			int i = reader.read();
+			//Lecture caractere par caractere... C'est sale, mais ça permet de réduire la place que prend le fichier .dat
+			while(i != -1)
+			{
+				c = (char) i;
+				if(c != ' ')
+				{
+					strBuild.append(c);
+				}
+				else
+				{
+					value = strBuild.toString();
+					strBuild.setLength(0);
+					strBuild.trimToSize();
+					switch(cpt)
+					{
+						case 0 :
+							distance = Double.parseDouble(value);
+							break;
+						case 1 :
+							angle = Double.parseDouble(value);
+							break;
+						case 2 :
+							heading = Double.parseDouble(value);
+							break;
+						case 3 :
+							velocity = Double.parseDouble(value);
+							break;
+						case 4 :
+							infoAccuracy = Long.parseLong(value);
+							break;
+						case 5 :
+							bulletHeading = Double.parseDouble(value);
+							break;
+						case 6 :
+							bulletPower = Double.parseDouble(value);
+							break;
+						case 7 :
+							touche = Integer.parseInt(value);
+							if(touche == 1)
+								myLeaderData.getShotMemories().add(new NeurophData(distance, angle, heading, velocity, infoAccuracy, bulletHeading, bulletPower, true));
+							else
+								myLeaderData.getShotMemories().add(new NeurophData(distance, angle, heading, velocity, infoAccuracy, bulletHeading, bulletPower, false));
+							break;
+						default :
+							System.out.println("ERREUR "+this.getClass().getName()+".readFromOrCreate : valeur inattendue dans le switch case");
+							break;
+					}
+					cpt = (cpt + 1) % 8;
+				}
+				i = reader.read();
+			}
+			reader.close();
 		}
-		return Integer.parseInt(n)-1;
+		catch (Exception ex)
+		{
+			ex.printStackTrace();
+		}
 	}
 	
-	//Sert à recréer le nom d'un robot à partir de son numéro. Ce code fonctionne uniquement parce que tout les robots sont une instance de la même classe
-	public String getNameOfBotI(int i)
+	//Ajoute au fichier ET a leaderData->shotMemories
+	public void sauvegarder(String url, NeurophData data)
 	{
-		String name = "";
-		int low = getName().indexOf("(")+1; 
-		int hi = getName().lastIndexOf(")");
-		if (low >= 0 && hi >=0) 
-		{ 
-			String beginning = getName().substring(0, low);
-			String ending = getName().substring(hi);
-			name = beginning+i+ending;
+		myLeaderData.getShotMemories().add(data);
+		System.out.println("Je note la memoire numero "+myLeaderData.getShotMemories().size()+"...");
+		try
+		{
+			PrintStream writer = new PrintStream(new RobocodeFileOutputStream(getDataFile(url).getAbsolutePath(), true));
+			writer.print(Math.round(data.getDistance()*100)/100+" ");
+			writer.print(Math.round(data.getAngle()*100)/100+" ");
+			writer.print(Math.round(data.getHeadingEnemy()*100)/100+" ");
+			writer.print(Math.round(data.getEnemyVelocity()*100)/100+" ");
+			writer.print(data.getTurn()+" ");
+			writer.print(Math.round(data.getBulletHeading()*100)/100+" ");
+			writer.print(Math.round(data.getBulletPower()*100)/100+" ");
+			if(data.isTouche())
+				writer.print("1 ");
+			else
+				writer.print("0 ");
+			writer.close();
 		}
-		return name;
-	}*/
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
 }

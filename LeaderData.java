@@ -1,5 +1,7 @@
 package CERI;
 
+import java.util.ArrayList;
+
 public class LeaderData implements java.io.Serializable 
 {
 	/**
@@ -23,6 +25,9 @@ public class LeaderData implements java.io.Serializable
 	private int teammatesAlive;
 	//Nombre d'ennemis encore en vie
 	private int ennemiesAlive;
+	
+	//Les donnees utilisees par Neuroph
+	private ArrayList<NeurophData> shotMemories = new ArrayList<NeurophData>();
 	
 	//La cible de nos robots
 	private Integer target = null;
@@ -118,19 +123,15 @@ public class LeaderData implements java.io.Serializable
 		return target;
 	}
 	
-	public ShootInstruction useNeuroph(String robotName, RobotData enemy, long turn)
-	{
-		Point myPosition = myFieldMonitor.getRobots().get(myFieldMonitor.getRobotDataByName(robotName)).getPosition();
-		Point positionEnemy = enemy.getPosition();
-		double headingEnemy = enemy.getDirection();
-		double enemyVelocity = enemy.getVitesse();
-		
-		return neuroph(myPosition, positionEnemy, headingEnemy, enemyVelocity, turn);
-	}
-	
-	private ShootInstruction neuroph(double distance, double angle, double headingEnemy, double enemyVelocity, long turn)
+	public ShootInstruction neuroph(double distance, double angle, double headingEnemy, double enemyVelocity, long turn)
 	{
 		System.out.println("LeaderData->neuroph() n'a pas encore été implémenté.");
-		return null;
+		//INSTRUCTION BIDON POUR TESTER !!
+		return new ShootInstruction(0,1);
+	}
+
+	public ArrayList<NeurophData> getShotMemories() 
+	{
+		return shotMemories;
 	}
 }

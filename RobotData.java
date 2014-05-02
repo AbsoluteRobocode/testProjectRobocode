@@ -126,5 +126,10 @@ public class RobotData implements java.io.Serializable
 	{
 		return vitesse;
 	}
+	
+	public long getLastScan()
+	{
+		return lastScan;
+	}
 }
 	

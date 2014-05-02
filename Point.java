@@ -44,7 +44,10 @@ public class Point implements java.io.Serializable
 	
 	public static double getAngle(Point p1, Point p2)
 	{
-		
-		return 1;
+		double pythagoreX = p1.x-p2.x;
+		double pythagoreY = p1.y-p2.y;
+		double distance = Math.sqrt(pythagoreX*pythagoreX + pythagoreY*pythagoreY);
+		double angle = Math.acos(pythagoreY/distance) * 180/Math.PI;
+		return angle;
 	}
 }
