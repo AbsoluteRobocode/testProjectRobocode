@@ -67,6 +67,7 @@ public class CERI_RoboCode_Project_2014 extends TeamRobot
 			leader = true;
 			myLeaderData = new LeaderData();
 			readFrom(NEUROPH_FILE_URL);
+			myLeaderData.setCerveau(); // créé le cerveau et lance déjà l'apprentissage dans un thread dédié
 		}
 		
 		if(leader == true)

@@ -1,9 +1,10 @@
-import java.util.Vector;
+package CERI;
+
+import java.util.ArrayList;
 
 import org.neuroph.core.NeuralNetwork;
 import org.neuroph.nnet.MultiLayerPerceptron;
 import org.neuroph.core.learning.SupervisedTrainingElement;
-import org.neuroph.core.learning.TrainingElement;
 import org.neuroph.core.learning.TrainingSet;
 import org.neuroph.nnet.learning.LMS;
 
@@ -36,10 +37,47 @@ public class NeuroBrain {
 	public static final double maxPower = 3;
 	
 	
+	public NeuroBrain( ArrayList<NeurophData> datas ) {
+		neuralNetwork = new MultiLayerPerceptron ( 5, 25, 2 );
+		((LMS) neuralNetwork.getLearningRule()).setMaxError(0.00001);// taux d'erreur moyen accepté
+        ((LMS) neuralNetwork.getLearningRule()).setLearningRate(0.7);//
+        ((LMS) neuralNetwork.getLearningRule()).setMaxIterations(maxIterations);
+        
+        createAndSetTrainingset ( datas );
+        
+        neuralNetwork.learnInNewThread ( trainingSet ); // il ne faut pas bloquer le robot dans ses autres taches
+	}
 	
+	/*
+	 * cette fonction permet d'initialiser le réseau de neuronne à partir
+	 * d'une liste de NeurophData
+	 */
+	public void createAndSetTrainingset ( ArrayList<NeurophData> datas ) {
+		
+		trainingSet = new TrainingSet<SupervisedTrainingElement>();
+		
+		double[] input = new double [ 5 ];
+		double[] output = new double [ 2 ];
+		
+		
+		for ( NeurophData i : datas ) {
+			
+			input [ 0 ] = i.getDistance();
+			input [ 1 ] = i.getAngle();
+			input [ 2 ] = i.getHeadingEnemy();
+			input [ 3 ] = i.getEnemyVelocity();
+			input [ 4 ] = i.isTouche() ? 1.0d : 0.0d ;
+			output [ 0 ] = i.getBulletHeading();
+			output [ 1 ] = i.getBulletPower();
+			
+			trainingSet.addElement ( new SupervisedTrainingElement  ( input, output ) ); // besoin que des entrées
+		}
+		
+		
+	}
 	
 
-	public void NeuroBrain ( String neuroNetworkFile, String dataFile, boolean fromFile ) {
+	public NeuroBrain ( final String neuroNetworkFile, final String dataFile, final boolean fromFile ) {
 		
 		// si on veut charger à partir d'un fichier
 		if ( fromFile ) {
@@ -48,17 +86,18 @@ public class NeuroBrain {
 		}
 		else { // sinon on crée un réseau de base
 			/*
-			 * 7 entrée :
-			 * - pos ennemi ( x et y )
-			 * - direction ennemi ( x, y )
-			 * - notre pos ( x et y )
-			 * - tir touche ( 0 / 1 )
+			 * 5 entrée :
+			 * - distance ennemi
+			 * - angle vers l'ennemi
+			 * - direction ennemi
+			 * - vitesse ennemi
+			 * - touche
 			 * 
 			 * 2 sorties:
 			 * - angle de tir
 			 * - puissance du tir
 			 */
-			neuralNetwork = new MultiLayerPerceptron ( 7, 11, 2 ); 
+			neuralNetwork = new MultiLayerPerceptron ( 5, 25, 2 ); 
 		}
 		
 		
@@ -72,7 +111,7 @@ public class NeuroBrain {
         /*
          * chargement d'un jeu de données précréé
          */
-		trainingSet = TrainingSet.createFromFile( "dataFile.txt", 7, 2, ","); // separateur = ,
+		trainingSet = TrainingSet.createFromFile( "dataFile.txt", 5, 2, ","); // separateur = ,
         
         /*
          * on apprend la première fois pour initialiser le réseau de neuronne
