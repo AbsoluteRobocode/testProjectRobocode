@@ -32,6 +32,17 @@ public class LeaderData implements java.io.Serializable
 	//La cible de nos robots
 	private Integer target = null;
 	
+	private NeuroBrain cerveau;
+	
+	public NeuroBrain getCerveau() {
+		return cerveau;
+	}
+	
+	
+	public void setCerveau( ) {
+		cerveau = new NeuroBrain ( this.getShotMemories() );
+	}
+	
 	public LeaderData()
 	{
 		myFieldMonitor = new FieldMonitor();
@@ -127,7 +138,12 @@ public class LeaderData implements java.io.Serializable
 	{
 		System.out.println("LeaderData->neuroph() n'a pas encore été implémenté.");
 		//INSTRUCTION BIDON POUR TESTER !!
-		return new ShootInstruction(0,1);
+		
+		double[] input = { distance, angle, headingEnemy, enemyVelocity, 1.0d };
+		
+		double[] solution = cerveau.getSolution(input);
+		
+		return new ShootInstruction( solution[0], solution[1] );
 	}
 
 	public ArrayList<NeurophData> getShotMemories() 
