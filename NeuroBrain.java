@@ -38,10 +38,16 @@ public class NeuroBrain {
 	
 	
 	public NeuroBrain( ArrayList<NeurophData> datas ) {
-		neuralNetwork = new MultiLayerPerceptron ( 5, 25, 2 );
-		((LMS) neuralNetwork.getLearningRule()).setMaxError(0.00001);// taux d'erreur moyen accepté
+		//neuralNetwork = new MultiLayerPerceptron ( 5, 25, 2 );
+		
+		neuralNetwork = NeuralNetwork.load ( "neurophFiles/network/NeuroBrainNet.nnet" ); 
+		
+		
+		((LMS) neuralNetwork.getLearningRule()).setMaxError(0.0000001);// taux d'erreur moyen accepté
         ((LMS) neuralNetwork.getLearningRule()).setLearningRate(0.7);//
         ((LMS) neuralNetwork.getLearningRule()).setMaxIterations(maxIterations);
+        
+        
         
         createAndSetTrainingset ( datas );
         
@@ -62,15 +68,15 @@ public class NeuroBrain {
 		
 		for ( NeurophData i : datas ) {
 			
-			input [ 0 ] = i.getDistance();
-			input [ 1 ] = i.getAngle();
-			input [ 2 ] = i.getHeadingEnemy();
-			input [ 3 ] = i.getEnemyVelocity();
+			input [ 0 ] = i.getDistance() / 1700;
+			input [ 1 ] = i.getAngle() / 360;
+			input [ 2 ] = i.getHeadingEnemy() / 360;
+			input [ 3 ] = i.getEnemyVelocity() / 8;
 			input [ 4 ] = i.isTouche() ? 1.0d : 0.0d ;
-			output [ 0 ] = i.getBulletHeading();
-			output [ 1 ] = i.getBulletPower();
+			output [ 0 ] = i.getBulletHeading() / 360;
+			output [ 1 ] = i.getBulletPower() / 3;
 			
-			trainingSet.addElement ( new SupervisedTrainingElement  ( input, output ) ); // besoin que des entrées
+			trainingSet.addElement ( new SupervisedTrainingElement  ( input, output ) );
 		}
 		
 		
@@ -145,6 +151,7 @@ public class NeuroBrain {
 	
 	/*
 	 * ajoute une ligne dans le jeu de donnée
+	 * cette fonction attend des valeurs déjà normalisées !
 	 */
 	public void addEntryValues ( double[] entrees, double[] sorties ) {
 		trainingSet.addElement ( new SupervisedTrainingElement ( entrees, sorties ) );
@@ -155,12 +162,29 @@ public class NeuroBrain {
 	
 	/*
 	 * génère une solution
+	 * les valeurs sont normalisé en interne dans cette fonction
+	 * en revanche pour le paramètre "touché" il faudra entrer 1.0d pour true
+	 * et 0.0d pour false
+	 * 5 entrée dans cet ordre:
+	 	* - distance ennemi
+	 	* - angle vers l'ennemi
+		* - direction ennemi
+		* - vitesse ennemi
+		* - touche
 	 */
 	
 	public double[] getSolution ( double[] input ) {
 		/*
 		 * donnée d'entrée de test pour la génération de solution
 		 */
+		
+		double[] inputTmp = input;
+		inputTmp [ 0 ] /= 1700; 
+		inputTmp [ 1 ] /= 360; 
+		inputTmp [ 2 ] /= 360; 
+		inputTmp [ 3 ] /= 8; 
+		
+		
 		TrainingSet<SupervisedTrainingElement > testSet = new TrainingSet<SupervisedTrainingElement>();
 		testSet.addElement ( new SupervisedTrainingElement  ( input, null ) ); // besoin que des entrées
 		
